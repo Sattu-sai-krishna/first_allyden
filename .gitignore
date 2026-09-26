@@ -1,0 +1,9 @@
+__pycache__
+fast_venv
+.DS_Store
+.env
+*.db
+*.sqlite
+*.sqlite3
+students.csv
+students.json

@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7fb">
+  <title>Attendly | Attendance</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js" defer></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #182230;
+      background: #f5f7fb;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      --muted: #667085;
+      --line: #e5e9f0;
+      --blue: #4f46e5;
+      --blue-dark: #4338ca;
+      --green: #067647;
+      --red: #b42318;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; min-width: 320px; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; padding: 18px max(24px, calc((100vw - 1120px) / 2));
+      background: #fff; border-bottom: 1px solid var(--line);
+    }
+    .topbar-actions { display: flex; align-items: center; gap: 14px; }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 750; letter-spacing: -.03em; }
+    .brand-mark {
+      display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px;
+      color: #fff; background: var(--blue); font-size: 19px;
+    }
+    .today { color: var(--muted); font-size: 14px; }
+    main { max-width: 1120px; margin: 0 auto; padding: 36px 24px 64px; }
+    .intro { margin-bottom: 28px; }
+    .eyebrow { margin: 0 0 7px; color: var(--blue); font-size: 12px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(28px, 4vw, 36px); letter-spacing: -.045em; }
+    .intro p:last-child { margin: 9px 0 0; color: var(--muted); }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 20px; align-items: start; }
+    .stack { display: grid; gap: 20px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 22px; box-shadow: 0 3px 10px rgb(16 24 40 / 3%); }
+    .card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 17px; }
+    h2 { margin: 0; font-size: 18px; letter-spacing: -.025em; }
+    .subtext { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 6px 0 0; }
+    .badge { flex: none; border-radius: 999px; padding: 5px 10px; background: #eef2ff; color: #4338ca; font-size: 12px; font-weight: 650; }
+    .field-label { display: block; margin: 13px 0 6px; color: #344054; font-size: 13px; font-weight: 650; }
+    input[type="text"], input[type="date"] {
+      width: 100%; min-height: 42px; border: 1px solid #d0d5dd; border-radius: 9px;
+      padding: 9px 11px; color: #182230; background: #fff; outline: none;
+    }
+    input:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgb(79 70 229 / 12%); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .button {
+      min-height: 40px; border: 1px solid transparent; border-radius: 9px;
+      padding: 9px 14px; font-weight: 650; transition: background .15s, border-color .15s;
+    }
+    .button-primary { color: #fff; background: var(--blue); }
+    .button-primary:hover { background: var(--blue-dark); }
+    .button-secondary { color: #344054; background: #fff; border-color: #d0d5dd; }
+    .button-secondary:hover { background: #f9fafb; }
+    .button-small { min-height: 34px; padding: 6px 10px; font-size: 13px; }
+    .full { width: 100%; margin-top: 14px; }
+    .scan-input-row { display: grid; grid-template-columns: 1fr auto; gap: 9px; }
+    .camera-actions { display: flex; gap: 9px; margin-top: 12px; }
+    .camera-actions .button { flex: 1; }
+    .camera-wrap { display: none; overflow: hidden; margin-top: 14px; border-radius: 12px; background: #101828; }
+    .camera-wrap.active { display: block; }
+    video { display: block; width: 100%; max-height: 320px; object-fit: cover; }
+    .camera-fallback { display: none; }
+    .camera-wrap.fallback video { display: none; }
+    .camera-wrap.fallback .camera-fallback { display: block; }
+    .message { min-height: 20px; margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .message.success { color: var(--green); }
+    .message.error { color: var(--red); }
+    .checklist { display: grid; gap: 2px; max-height: 300px; overflow: auto; margin-top: 10px; }
+    .student-check {
+      display: flex; align-items: center; gap: 10px; padding: 10px 8px;
+      border-bottom: 1px solid #f0f2f5; color: #344054; font-size: 14px;
+    }
+    .student-check input { width: 16px; height: 16px; accent-color: var(--blue); }
+    .empty { padding: 16px 4px; color: var(--muted); font-size: 14px; }
+    .section-toolbar { display: flex; align-items: center; gap: 10px; margin: 15px 0 4px; }
+    .section-toolbar .field-label { margin: 0; }
+    .section-toolbar input[type="date"] { max-width: 190px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid #eaecf0; text-align: left; white-space: nowrap; }
+    th { color: var(--muted); font-size: 12px; font-weight: 650; }
+    .status-pill { display: inline-block; border-radius: 999px; padding: 4px 9px; background: #ecfdf3; color: var(--green); font-size: 12px; font-weight: 650; }
+    .status-pill.absent { background: #fef3f2; color: var(--red); }
+    .roster { display: grid; gap: 8px; }
+    .roster-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0f2f5; }
+    .roster-name { font-size: 14px; font-weight: 650; }
+    .roster-roll { margin-top: 3px; color: var(--muted); font-size: 12px; }
+    dialog { width: min(360px, calc(100% - 32px)); padding: 24px; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 24px 60px rgb(16 24 40 / 20%); }
+    dialog::backdrop { background: rgb(16 24 40 / 48%); }
+    .qr-content { display: grid; justify-items: center; text-align: center; }
+    .qr-content h2 { margin-bottom: 6px; }
+    .code-options { display: grid; justify-items: center; gap: 14px; width: 100%; margin: 16px 0; }
+    .code-panel { display: grid; justify-items: center; gap: 8px; width: 100%; color: var(--muted); font-size: 12px; font-weight: 650; }
+    #qrCanvas { min-height: 210px; display: grid; place-items: center; }
+    #qrCanvas img, #qrCanvas canvas { max-width: 100%; }
+    #barcodeSvg { width: min(100%, 300px); height: 70px; }
+    .qr-code-text { overflow-wrap: anywhere; color: var(--muted); font-size: 11px; }
+    .qr-content .button { width: 100%; margin-top: 12px; }
+    @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+    @media (max-width: 500px) {
+      .topbar { padding: 14px 18px; }
+      main { padding: 28px 16px 48px; }
+      .card { padding: 18px; }
+      .form-row { grid-template-columns: 1fr; gap: 0; }
+      .today { font-size: 12px; }
+      .camera-actions { flex-direction: column; }
+    }
+    @media print {
+      body > *:not(dialog) { display: none !important; }
+      dialog[open] { position: static; display: block; width: 100%; margin: 0 auto; border: 0; box-shadow: none; }
+      dialog::backdrop { display: none; }
+      dialog .button { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">A</span><span>Attendly</span></div>
+    <div class="topbar-actions">
+      <div class="today" id="todayLabel"></div>
+      <button class="button button-secondary button-small" id="logoutButton" type="button" hidden>Sign out</button>
+    </div>
+  </header>
+  <main id="loginArea">
+    <section class="card" style="max-width: 440px; margin: 0 auto;">
+      <div class="card-heading">
+        <div>
+          <h2>Admin sign in</h2>
+          <p class="subtext">Sign in to manage students and attendance.</p>
+        </div>
+      </div>
+      <form id="loginForm">
+        <label class="field-label" for="adminPassword">Admin password</label>
+        <input id="adminPassword" type="password" autocomplete="current-password" required>
+        <button class="button button-primary full" type="submit">Sign in</button>
+      </form>
+      <p class="message" id="loginMessage" role="status" aria-live="polite"></p>
+      <p class="subtext" id="localPasswordHint" hidden>Local development password: <code>local-dev-only</code>. Set <code>ATTENDANCE_ADMIN_PASSWORD</code> to change it.</p>
+    </section>
+  </main>
+  <main id="appArea" hidden>
+    <section class="intro">
+      <p class="eyebrow">Attendance workspace</p>
+      <h1>Good attendance starts here.</h1>
+      <p>Check people in with a QR code, barcode scanner, or your existing manual register.</p>
+    </section>
+
+    <div class="layout">
+      <div class="stack">
+        <section class="card" aria-labelledby="scanHeading">
+          <div class="card-heading">
+            <div>
+              <h2 id="scanHeading">Quick check-in</h2>
+              <p class="subtext">Scan a student's QR/barcode with your camera or a USB scanner.</p>
+            </div>
+            <span class="badge">QR · Barcode</span>
+          </div>
+          <label class="field-label" for="scanDate">Attendance date</label>
+          <input id="scanDate" type="date">
+          <label class="field-label" for="scanCode">Scan or enter attendance code</label>
+          <div class="scan-input-row">
+            <input id="scanCode" type="text" placeholder="Ready for scanner…" autocomplete="off" aria-describedby="scanHelp">
+            <button id="checkInButton" class="button button-primary" type="button">Check in</button>
+          </div>
+          <p class="subtext" id="scanHelp">USB barcode scanners work like a keyboard—scan into this field and press Enter.</p>
+          <div class="camera-actions">
+            <button id="startCameraButton" class="button button-secondary" type="button">Open camera scanner</button>
+            <button id="stopCameraButton" class="button button-secondary" type="button" hidden>Stop camera</button>
+          </div>
+          <div class="camera-wrap" id="cameraWrap"><video id="camera" playsinline muted></video><div class="camera-fallback" id="cameraFallback"></div></div>
+          <p class="message" id="scanMessage" role="status" aria-live="polite"></p>
+        </section>
+
+        <section class="card" aria-labelledby="manualHeading">
+          <div class="card-heading">
+            <div>
+              <h2 id="manualHeading">Manual register</h2>
+              <p class="subtext">Keep using the checklist to mark the whole class in one go.</p>
+            </div>
+          </div>
+          <label class="field-label" for="markDate">Attendance date</label>
+          <input id="markDate" type="date">
+          <div class="checklist" id="studentList"><div class="empty">Loading students…</div></div>
+          <button id="markAllButton" class="button button-primary full" type="button">Save manual attendance</button>
+          <p class="message" id="markMessage" role="status" aria-live="polite"></p>
+        </section>
+
+        <section class="card" aria-labelledby="reportHeading">
+          <div class="card-heading">
+            <div>
+              <h2 id="reportHeading">Attendance report</h2>
+              <p class="subtext">Review saved attendance for any date.</p>
+            </div>
+          </div>
+          <div class="section-toolbar">
+            <label class="field-label" for="viewDate">Date</label>
+            <input id="viewDate" type="date">
+            <button id="loadReportButton" class="button button-secondary button-small" type="button">Load</button>
+          </div>
+          <p class="message" id="reportMessage" role="status" aria-live="polite"></p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Name</th><th>Roll number</th><th>Status</th></tr></thead>
+              <tbody id="attendanceRows"><tr><td colspan="3" class="empty">Choose a date to view attendance.</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div class="stack">
+        <section class="card" aria-labelledby="addHeading">
+          <div class="card-heading">
+            <div>
+              <h2 id="addHeading">Add a student</h2>
+              <p class="subtext">Each student gets a unique code they can use for check-in.</p>
+            </div>
+          </div>
+          <form id="studentForm">
+            <label class="field-label" for="studentName">Student name</label>
+            <input id="studentName" type="text" placeholder="e.g. Alex Morgan" required maxlength="120">
+            <label class="field-label" for="studentRoll">Roll number</label>
+            <input id="studentRoll" type="text" placeholder="e.g. STU-1042" required maxlength="80">
+            <button class="button button-primary full" type="submit">Add student</button>
+          </form>
+          <p class="message" id="addMessage" role="status" aria-live="polite"></p>
+        </section>
+
+        <section class="card" aria-labelledby="rosterHeading">
+          <div class="card-heading">
+            <div>
+              <h2 id="rosterHeading">Student QR codes</h2>
+              <p class="subtext">Show or print a student's code for quick attendance.</p>
+            </div>
+            <span class="badge" id="studentCount">0 students</span>
+          </div>
+          <div class="roster" id="studentRoster"><div class="empty">Loading students…</div></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <dialog id="qrDialog" aria-labelledby="qrName">
+    <div class="qr-content">
+      <h2 id="qrName"></h2>
+      <p class="subtext" id="qrRoll"></p>
+      <div class="code-options">
+        <div class="code-panel"><span>QR code</span><div id="qrCanvas"></div></div>
+        <div class="code-panel"><span>Barcode · Code 128</span><svg id="barcodeSvg" role="img" aria-label="Student attendance barcode"></svg></div>
+      </div>
+      <p class="qr-code-text" id="qrCodeText"></p>
+      <button id="printQrButton" class="button button-primary" type="button">Print QR &amp; barcode</button>
+      <button id="closeQrButton" class="button button-secondary" type="button">Close</button>
+    </div>
+  </dialog>
+
+  <script>
+    const API = "";
+    const studentsById = new Map();
+    const today = new Date();
+    const todayIso = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, "0"),
+      String(today.getDate()).padStart(2, "0")
+    ].join("-");
+    const camera = document.getElementById("camera");
+    const cameraWrap = document.getElementById("cameraWrap");
+    let cameraStream = null;
+    let barcodeDetector = null;
+    let html5Scanner = null;
+    let html5ScannerStarted = false;
+    let html5ScanInProgress = false;
+    let scanTimer = null;
+
+    document.getElementById("todayLabel").textContent = today.toLocaleDateString(undefined, {
+      weekday: "long", year: "numeric", month: "long", day: "numeric"
+    });
+    if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+      document.getElementById("localPasswordHint").hidden = false;
+    }
+    for (const id of ["scanDate", "markDate", "viewDate"]) {
+      document.getElementById(id).value = todayIso;
+    }
+
+    function setMessage(id, message, state = "") {
+      const element = document.getElementById(id);
+      element.textContent = message;
+      element.className = `message${state ? ` ${state}` : ""}`;
+    }
+
+    async function request(path, options = {}) {
+      const headers = new Headers(options.headers || {});
+      const token = sessionStorage.getItem("attendanceToken");
+      if (token) headers.set("Authorization", `Bearer ${token}`);
+      const response = await fetch(`${API}${path}`, { ...options, headers });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 401 && path !== "/auth/login") {
+          sessionStorage.removeItem("attendanceToken");
+          showLogin("Your admin session expired. Please sign in again.");
+        }
+        throw new Error(data.detail || `Request failed (${response.status})`);
+      }
+      return data;
+    }
+
+    function showDashboard() {
+      document.getElementById("loginArea").hidden = true;
+      document.getElementById("appArea").hidden = false;
+      document.getElementById("logoutButton").hidden = false;
+    }
+
+    function showLogin(message = "") {
+      document.getElementById("loginArea").hidden = false;
+      document.getElementById("appArea").hidden = true;
+      document.getElementById("logoutButton").hidden = true;
+      setMessage("loginMessage", message, message ? "error" : "");
+      document.getElementById("adminPassword").focus();
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      setMessage("loginMessage", "");
+      const password = document.getElementById("adminPassword").value;
+      try {
+        const result = await request("/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password })
+        });
+        sessionStorage.setItem("attendanceToken", result.access_token);
+        event.target.reset();
+        showDashboard();
+        await loadStudents();
+      } catch (error) {
+        setMessage("loginMessage", error.message, "error");
+      }
+    });
+    document.getElementById("logoutButton").addEventListener("click", () => {
+      sessionStorage.removeItem("attendanceToken");
+      void stopCamera();
+      showLogin("You have been signed out.");
+    });
+
+    function renderStudents(students) {
+      studentsById.clear();
+      for (const student of students) studentsById.set(student.id, student);
+
+      const checklist = document.getElementById("studentList");
+      const roster = document.getElementById("studentRoster");
+      checklist.replaceChildren();
+      roster.replaceChildren();
+      document.getElementById("studentCount").textContent =
+        `${students.length} student${students.length === 1 ? "" : "s"}`;
+
+      if (!students.length) {
+        checklist.innerHTML = '<div class="empty">Add a student to get started.</div>';
+        roster.innerHTML = '<div class="empty">Student QR codes will appear here.</div>';
+        return;
+      }
+
+      for (const student of students) {
+        const label = document.createElement("label");
+        label.className = "student-check";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.dataset.id = student.id;
+        checkbox.checked = true;
+        const name = document.createElement("span");
+        name.textContent = `${student.name} (${student.roll_no})`;
+        label.append(checkbox, name);
+        checklist.append(label);
+
+        const row = document.createElement("div");
+        row.className = "roster-row";
+        const identity = document.createElement("div");
+        const studentName = document.createElement("div");
+        studentName.className = "roster-name";
+        studentName.textContent = student.name;
+        const roll = document.createElement("div");
+        roll.className = "roster-roll";
+        roll.textContent = student.roll_no;
+        identity.append(studentName, roll);
+        const qrButton = document.createElement("button");
+        qrButton.className = "button button-secondary button-small";
+        qrButton.type = "button";
+        qrButton.textContent = "Show QR";
+        qrButton.addEventListener("click", () => showQr(student));
+        row.append(identity, qrButton);
+        roster.append(row);
+      }
+    }
+
+    async function loadStudents() {
+      try {
+        renderStudents(await request("/students"));
+      } catch (error) {
+        document.getElementById("studentList").textContent = "Could not load students.";
+        document.getElementById("studentRoster").textContent = "Could not load student QR codes.";
+        setMessage("addMessage", `Error: ${error.message}`, "error");
+      }
+    }
+
+    document.getElementById("studentForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      setMessage("addMessage", "");
+      const name = document.getElementById("studentName").value.trim();
+      const roll_no = document.getElementById("studentRoll").value.trim();
+      if (!name || !roll_no) {
+        setMessage("addMessage", "Enter both a name and roll number.", "error");
+        return;
+      }
+
+      try {
+        await request("/students", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, roll_no })
+        });
+        event.target.reset();
+        await loadStudents();
+        setMessage("addMessage", "Student added. Their QR code is ready.", "success");
+      } catch (error) {
+        setMessage("addMessage", `Error: ${error.message}`, "error");
+      }
+    });
+
+    async function submitManualAttendance() {
+      const date = document.getElementById("markDate").value;
+      const checkboxes = [...document.querySelectorAll("#studentList input[type=checkbox]")];
+      if (!date) {
+        setMessage("markMessage", "Choose an attendance date first.", "error");
+        return;
+      }
+      if (!checkboxes.length) {
+        setMessage("markMessage", "Add a student before marking attendance.", "error");
+        return;
+      }
+
+      try {
+        for (const checkbox of checkboxes) {
+          await request("/attendance", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              student_id: Number(checkbox.dataset.id),
+              date,
+              present: checkbox.checked
+            })
+          });
+        }
+        setMessage("markMessage", `Attendance saved for ${date}.`, "success");
+      } catch (error) {
+        setMessage("markMessage", `Error: ${error.message}`, "error");
+      }
+    }
+
+    async function checkInByCode(code) {
+      const attendanceCode = code.trim();
+      const date = document.getElementById("scanDate").value;
+      if (!attendanceCode) {
+        setMessage("scanMessage", "Scan or enter an attendance code first.", "error");
+        return;
+      }
+      if (!date) {
+        setMessage("scanMessage", "Choose an attendance date first.", "error");
+        return;
+      }
+
+      try {
+        const result = await request("/attendance/scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ attendance_code: attendanceCode, date })
+        });
+        setMessage("scanMessage", `${result.name} (${result.roll_no}) — ${result.message}.`, "success");
+        document.getElementById("scanCode").value = "";
+        document.getElementById("scanCode").focus();
+        document.getElementById("viewDate").value = date;
+        await loadReport();
+      } catch (error) {
+        setMessage("scanMessage", `Error: ${error.message}`, "error");
+        document.getElementById("scanCode").select();
+      }
+    }
+
+    async function loadReport() {
+      const date = document.getElementById("viewDate").value;
+      const rows = document.getElementById("attendanceRows");
+      if (!date) {
+        setMessage("reportMessage", "Choose a date first.", "error");
+        return;
+      }
+      try {
+        const records = await request(`/attendance/${date}`);
+        rows.replaceChildren();
+        if (!records.length) {
+          const row = document.createElement("tr");
+          const cell = document.createElement("td");
+          cell.colSpan = 3;
+          cell.className = "empty";
+          cell.textContent = "No attendance records for this date.";
+          row.append(cell);
+          rows.append(row);
+          setMessage("reportMessage", "");
+          return;
+        }
+        for (const record of records) {
+          const row = document.createElement("tr");
+          const name = document.createElement("td");
+          name.textContent = record.name;
+          const roll = document.createElement("td");
+          roll.textContent = record.roll_no;
+          const statusCell = document.createElement("td");
+          const status = document.createElement("span");
+          status.className = `status-pill${record.present ? "" : " absent"}`;
+          status.textContent = record.present ? "Present" : "Absent";
+          statusCell.append(status);
+          row.append(name, roll, statusCell);
+          rows.append(row);
+        }
+        const presentCount = records.filter(record => record.present).length;
+        setMessage("reportMessage", `${presentCount} present · ${records.length - presentCount} absent`);
+      } catch (error) {
+        setMessage("reportMessage", `Error: ${error.message}`, "error");
+      }
+    }
+
+    function showQr(student) {
+      const container = document.getElementById("qrCanvas");
+      container.replaceChildren();
+      const barcode = document.getElementById("barcodeSvg");
+      barcode.replaceChildren();
+      document.getElementById("qrName").textContent = student.name;
+      document.getElementById("qrRoll").textContent = student.roll_no;
+      document.getElementById("qrCodeText").textContent = student.attendance_code;
+      if (typeof QRCode !== "function") {
+        container.textContent = "QR generator unavailable. Check your internet connection, or use the attendance code below.";
+      } else {
+        new QRCode(container, {
+          text: student.attendance_code,
+          width: 210,
+          height: 210,
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+      if (typeof JsBarcode === "function") {
+        JsBarcode(barcode, student.attendance_code, {
+          format: "CODE128",
+          displayValue: false,
+          margin: 4,
+          height: 58
+        });
+      } else {
+        barcode.textContent = "Barcode generator unavailable.";
+      }
+      document.getElementById("qrDialog").showModal();
+    }
+
+    async function detectNextFrame() {
+      if (!cameraStream || !barcodeDetector) return;
+      try {
+        const results = await barcodeDetector.detect(camera);
+        if (results.length && results[0].rawValue) {
+          const code = results[0].rawValue;
+          stopCamera();
+          document.getElementById("scanCode").value = code;
+          await checkInByCode(code);
+          return;
+        }
+        scanTimer = setTimeout(detectNextFrame, 180);
+      } catch (error) {
+        stopCamera();
+        setMessage("scanMessage", `Camera scanning stopped: ${error.message}`, "error");
+      }
+    }
+
+    async function startFallbackCamera() {
+      if (typeof Html5Qrcode !== "function") {
+        setMessage("scanMessage", "Camera scanning is unavailable in this browser. Use a USB scanner or enter the code above.", "error");
+        return;
+      }
+
+      html5ScanInProgress = false;
+      const supportedFormats = [
+        Html5QrcodeSupportedFormats.QR_CODE,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E
+      ];
+      cameraWrap.classList.add("active", "fallback");
+      document.getElementById("startCameraButton").hidden = true;
+      document.getElementById("stopCameraButton").hidden = false;
+      html5Scanner = new Html5Qrcode("cameraFallback", {
+        formatsToSupport: supportedFormats,
+        verbose: false
+      });
+
+      try {
+        await html5Scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 180 } },
+          decodedText => {
+            if (html5ScanInProgress) return;
+            html5ScanInProgress = true;
+            document.getElementById("scanCode").value = decodedText;
+            void stopCamera().then(() => checkInByCode(decodedText));
+          },
+          () => {}
+        );
+        html5ScannerStarted = true;
+        setMessage("scanMessage", "Camera is ready. Hold a QR code or barcode in view.");
+      } catch (error) {
+        await stopCamera();
+        throw error;
+      }
+    }
+
+    async function startCamera() {
+      setMessage("scanMessage", "");
+      if (!("BarcodeDetector" in window)) {
+        try {
+          await startFallbackCamera();
+        } catch (error) {
+          setMessage("scanMessage", `Could not start camera scanner: ${error.message}`, "error");
+        }
+        return;
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setMessage("scanMessage", "Camera access requires a secure page (HTTPS or localhost). Use a USB scanner or enter the code above.", "error");
+        return;
+      }
+      try {
+        const supportedFormats = await BarcodeDetector.getSupportedFormats();
+        const formats = supportedFormats.filter(format =>
+          ["qr_code", "code_128", "code_39", "ean_13", "ean_8", "upc_a", "upc_e"].includes(format)
+        );
+        if (!formats.length) {
+          setMessage("scanMessage", "This browser cannot read supported QR/barcode formats. Use a USB scanner or enter the code above.", "error");
+          return;
+        }
+        barcodeDetector = new BarcodeDetector({ formats });
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false
+        });
+        camera.srcObject = cameraStream;
+        await camera.play();
+        cameraWrap.classList.add("active");
+        document.getElementById("startCameraButton").hidden = true;
+        document.getElementById("stopCameraButton").hidden = false;
+        setMessage("scanMessage", "Camera is ready. Hold a QR code or barcode in view.");
+        detectNextFrame();
+      } catch (error) {
+        stopCamera();
+        setMessage("scanMessage", `Could not start camera scanner: ${error.message}`, "error");
+      }
+    }
+
+    function stopCamera() {
+      if (scanTimer !== null) clearTimeout(scanTimer);
+      scanTimer = null;
+      if (html5Scanner) {
+        const scanner = html5Scanner;
+        html5Scanner = null;
+        const wasStarted = html5ScannerStarted;
+        html5ScannerStarted = false;
+        const cleanup = wasStarted ? scanner.stop() : Promise.resolve();
+        return cleanup
+          .then(() => scanner.clear())
+          .catch(error => {
+            setMessage("scanMessage", `Could not stop camera scanner: ${error.message}`, "error");
+          })
+          .finally(() => finishStoppingCamera());
+      }
+      finishStoppingCamera();
+      return Promise.resolve();
+    }
+
+    function finishStoppingCamera() {
+      if (cameraStream) {
+        for (const track of cameraStream.getTracks()) track.stop();
+      }
+      cameraStream = null;
+      barcodeDetector = null;
+      html5ScanInProgress = false;
+      camera.srcObject = null;
+      cameraWrap.classList.remove("active");
+      cameraWrap.classList.remove("fallback");
+      document.getElementById("startCameraButton").hidden = false;
+      document.getElementById("stopCameraButton").hidden = true;
+    }
+
+    document.getElementById("checkInButton").addEventListener("click", () => {
+      checkInByCode(document.getElementById("scanCode").value);
+    });
+    document.getElementById("scanCode").addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        checkInByCode(event.currentTarget.value);
+      }
+    });
+    document.getElementById("startCameraButton").addEventListener("click", startCamera);
+    document.getElementById("stopCameraButton").addEventListener("click", stopCamera);
+    document.getElementById("markAllButton").addEventListener("click", submitManualAttendance);
+    document.getElementById("loadReportButton").addEventListener("click", loadReport);
+    document.getElementById("closeQrButton").addEventListener("click", () => {
+      document.getElementById("qrDialog").close();
+    });
+    document.getElementById("printQrButton").addEventListener("click", () => window.print());
+    document.getElementById("qrDialog").addEventListener("click", event => {
+      if (event.target === event.currentTarget) event.currentTarget.close();
+    });
+    window.addEventListener("pagehide", stopCamera);
+    if (sessionStorage.getItem("attendanceToken")) {
+      showDashboard();
+      loadStudents();
+    } else {
+      showLogin();
+    }
+  </script>
+</body>
+</html>
