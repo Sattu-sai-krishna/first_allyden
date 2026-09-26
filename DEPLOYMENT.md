@@ -1,37 +1,32 @@
 # Free online deployment
 
-The deployment uses a free Render web service and a free Neon PostgreSQL
-database. The app's local SQLite database is not uploaded; attendance data
-created online will be stored in Neon.
+The app can run on Render's free web service with SQLite and no external
+database account. This is suitable for a demo, but Render's free service has
+ephemeral storage: attendance data can be lost when the service restarts or
+redeploys. Use PostgreSQL for real attendance records that must persist.
 
 ## 1. Push the project to GitHub
 
-Create a private GitHub repository and push this project. Check that `.env` and
-the local `*.db` files are not staged or pushed.
+Push this project to a GitHub repository. Check that `.env`, local database
+files, and student data files are not staged or pushed.
 
-## 2. Create a Neon database
-
-1. Create a free project at [Neon](https://neon.tech/).
-2. In the project dashboard, open **Connect** and copy the pooled connection
-   string for the database. It should start with `postgresql://` and include
-   `sslmode=require`.
-3. Keep the connection string private.
-
-## 3. Create the Render service
+## 2. Create the Render service
 
 1. Create a free account at [Render](https://render.com/).
 2. Choose **New + → Blueprint**, connect the GitHub repository, and deploy
    `render.yaml`.
-3. When prompted, set these environment variables:
-   - `DATABASE_URL`: the Neon connection string.
-   - `ATTENDANCE_ADMIN_PASSWORD`: a new, strong password for the attendance
-     administrator. Do not reuse your Neon password.
-4. Render generates `ATTENDANCE_TOKEN_SECRET` automatically. Wait for the
-   service to finish deploying, then open its `onrender.com` URL.
-5. Sign in using the admin password you configured.
+3. Render generates a secure `ATTENDANCE_ADMIN_PASSWORD` and
+   `ATTENDANCE_TOKEN_SECRET` automatically. No `DATABASE_URL` is needed for the
+   SQLite demo.
+4. After deployment, find and reveal `ATTENDANCE_ADMIN_PASSWORD` in the
+   service's Environment settings, then open its `onrender.com` URL and sign
+   in with that password.
 
 The first free-tier request after inactivity may take a little while because
 Render may spin down idle services.
+
+To retain attendance data across restarts and redeploys, configure a persistent
+PostgreSQL database and set `DATABASE_URL` in the Render service environment.
 
 ## Local development
 

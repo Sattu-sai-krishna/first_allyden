@@ -21,10 +21,6 @@ import models
 
 
 if os.getenv("RENDER") == "true":
-    if not os.getenv("DATABASE_URL", "").startswith(
-        ("postgres://", "postgresql://", "postgresql+psycopg://")
-    ):
-        raise RuntimeError("Set DATABASE_URL to the Neon PostgreSQL connection string.")
     if len(os.getenv("ATTENDANCE_ADMIN_PASSWORD", "")) < 12:
         raise RuntimeError(
             "Set ATTENDANCE_ADMIN_PASSWORD to a password with at least 12 characters."
